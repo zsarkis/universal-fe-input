@@ -1,10 +1,5 @@
 import { pipeline, env as transformersEnv } from '@xenova/transformers';
 import { TypedEmitter } from '../emitter.js';
-
-// transformers.js otherwise tries to load models from local-relative paths,
-// which the dev server 404s with index.html. Force the Hugging Face CDN.
-transformersEnv.allowLocalModels = false;
-transformersEnv.allowRemoteModels = true;
 import type { VoiceReading } from '../types.js';
 import { resolveIntent } from '../intents/grammar.js';
 import { EnergyVad } from './vad.js';
@@ -49,6 +44,12 @@ export class VoiceAdapter
     this.status = 'starting';
     this.emit('status', this.status);
     try {
+      // Force transformers.js to fetch from Hugging Face's CDN. Without this,
+      // it falls back to local-relative paths that the dev server resolves to
+      // index.html (HTML), which then fails JSON.parse.
+      transformersEnv.allowLocalModels = false;
+      transformersEnv.allowRemoteModels = true;
+      transformersEnv.useBrowserCache = false; // avoid sticky bad-cache from prior failed attempts
       const tr = (await pipeline(
         'automatic-speech-recognition',
         this.modelId,
