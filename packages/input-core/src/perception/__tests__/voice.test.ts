@@ -7,6 +7,7 @@ const { transcribe, pipeline } = vi.hoisted(() => ({
 
 vi.mock('@xenova/transformers', () => ({
   pipeline,
+  env: { allowLocalModels: false, allowRemoteModels: true },
 }));
 
 import { VoiceAdapter } from '../voice.js';

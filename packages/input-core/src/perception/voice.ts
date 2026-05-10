@@ -1,5 +1,10 @@
-import { pipeline } from '@xenova/transformers';
+import { pipeline, env as transformersEnv } from '@xenova/transformers';
 import { TypedEmitter } from '../emitter.js';
+
+// transformers.js otherwise tries to load models from local-relative paths,
+// which the dev server 404s with index.html. Force the Hugging Face CDN.
+transformersEnv.allowLocalModels = false;
+transformersEnv.allowRemoteModels = true;
 import type { VoiceReading } from '../types.js';
 import { resolveIntent } from '../intents/grammar.js';
 import { EnergyVad } from './vad.js';

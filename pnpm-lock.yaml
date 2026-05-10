@@ -20,6 +20,9 @@ importers:
       '@input/core':
         specifier: workspace:*
         version: link:../../packages/input-core
+      '@mediapipe/face_mesh':
+        specifier: ^0.4.1633559619
+        version: 0.4.1633559619
       react:
         specifier: ^18.3.0
         version: 18.3.1
