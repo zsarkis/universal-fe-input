@@ -94,14 +94,26 @@ export class VoiceAdapter
 
   feedSamples(samples: Float32Array, ts: number): void {
     const ev = this.vad.feed(samples, ts);
-    this.buffer.push(samples);
     if (ev.event === 'started') {
+      // Reset and capture from the start of this utterance only.
+      this.buffer = [samples];
       this.emit('reading', { kind: 'voice', phase: 'started', ts });
-    } else if (ev.event === 'ended') {
+      return;
+    }
+    if (ev.event === 'ended') {
+      this.buffer.push(samples);
       const audio = concat(this.buffer);
       this.buffer = [];
       void this.transcribe(audio, ts);
+      return;
     }
+    // Only buffer while we're inside an utterance — discard silence.
+    if (this.vad.lastRms >= 0.005 || this.buffer.length > 0) {
+      this.buffer.push(samples);
+    }
+    // Hard cap so we never exceed Whisper's 30s window even if VAD never fires ended.
+    const MAX_CHUNKS = 1500; // ~30s at 16kHz / 128 samples per chunk
+    if (this.buffer.length > MAX_CHUNKS) this.buffer.shift();
   }
 
   private async transcribe(audio: Float32Array, ts: number): Promise<void> {
