@@ -26,6 +26,7 @@ export class VoiceAdapter
   private vad: EnergyVad;
   private buffer: Float32Array[] = [];
   private readonly modelId: string;
+  private audioContext: AudioContext | null = null;
 
   constructor(opts: VoiceAdapterOptions = {}) {
     super();
@@ -36,7 +37,7 @@ export class VoiceAdapter
     });
   }
 
-  async start(_stream: MediaStream): Promise<void> {
+  async start(stream: MediaStream): Promise<void> {
     this.status = 'starting';
     this.emit('status', this.status);
     try {
@@ -47,6 +48,33 @@ export class VoiceAdapter
       this.transcriber = tr as Transcriber;
       this.status = 'running';
       this.emit('status', this.status);
+      if (typeof window !== 'undefined' && stream) {
+        const ac = new AudioContext({ sampleRate: 16000 });
+        const src = ac.createMediaStreamSource(stream);
+        await ac.audioWorklet.addModule(
+          URL.createObjectURL(
+            new Blob(
+              [
+                `class P extends AudioWorkletProcessor {
+                   process(inputs) {
+                     const ch = inputs[0]?.[0];
+                     if (ch) this.port.postMessage(ch.slice());
+                     return true;
+                   }
+                 }
+                 registerProcessor('p', P);`,
+              ],
+              { type: 'application/javascript' },
+            ),
+          ),
+        );
+        const node = new AudioWorkletNode(ac, 'p');
+        src.connect(node);
+        node.port.onmessage = (ev) => {
+          this.feedSamples(new Float32Array(ev.data), performance.now());
+        };
+        this.audioContext = ac;
+      }
     } catch (e) {
       this.status = 'error';
       this.emit('status', this.status);
@@ -92,6 +120,8 @@ export class VoiceAdapter
   }
 
   stop(): void {
+    this.audioContext?.close().catch(() => undefined);
+    this.audioContext = null;
     this.transcriber = null;
     this.buffer = [];
     this.status = 'idle';
