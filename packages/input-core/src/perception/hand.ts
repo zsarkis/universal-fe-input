@@ -34,6 +34,7 @@ export class HandAdapter
   }
 
   async start(stream: MediaStream): Promise<void> {
+    if (this.status !== 'idle') return;
     this.status = 'starting';
     this.emit('status', this.status);
     try {
