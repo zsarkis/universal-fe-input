@@ -26,6 +26,9 @@ export function useIntentRouter() {
         case 'help':
           useUi.getState().setHelp(true);
           break;
+        case 'summarize':
+          useUi.getState().setSummary(true);
+          break;
         case 'scroll_down':
           window.scrollBy({ top: window.innerHeight * 0.6, behavior: 'smooth' });
           break;
