@@ -222,3 +222,18 @@ describe('FusionMachine — abort signals', () => {
     expect(m.state).toBe('IDLE');
   });
 });
+
+describe('FusionMachine — DICTATING (voice-only)', () => {
+  it('IDLE + voice started → DICTATING + scroll_down transcript → emits scroll_down', () => {
+    const targets = new TargetRegistry();
+    const m = new FusionMachine({ targets, config: DEFAULT_FUSION_CONFIG });
+    const intents: Intent[] = [];
+    m.on('intent', (i) => intents.push(i));
+    m.feed(voiceStart(0));
+    expect(m.state).toBe('DICTATING');
+    m.feed(voiceTranscript('scroll_down', 100));
+    expect(m.state).toBe('IDLE');
+    expect(intents).toEqual([expect.objectContaining({ name: 'scroll_down' })]);
+    expect(intents[0]?.targetId).toBeUndefined();
+  });
+});
