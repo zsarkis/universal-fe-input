@@ -6,14 +6,14 @@ export function GazeCursor() {
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
-    const off = engine.machine.on('state', () => {});
-    const handler = (e: MouseEvent) => setPos({ x: e.clientX, y: e.clientY });
-    // Until WebGazer is wired in Task 3.13, fall back to mouse for development
-    window.addEventListener('mousemove', handler);
-    return () => {
-      window.removeEventListener('mousemove', handler);
-      off();
+    let raf = 0;
+    const tick = () => {
+      const g = engine.lastGaze;
+      if (g) setPos({ x: g.x, y: g.y });
+      raf = requestAnimationFrame(tick);
     };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
   }, [engine]);
 
   if (!pos) return null;
