@@ -48,12 +48,17 @@ export function usePerception(): PerceptionHandle & { ready: boolean } {
         video: s.enableGaze || s.enableHand,
         audio: s.enableVoice,
       });
-      const tasks: Promise<void>[] = [];
-      if (s.enableGaze) tasks.push(gaze.current.start(stream));
-      if (s.enableHand) tasks.push(hand.current.start(stream));
-      if (s.enableVoice) tasks.push(voice.current.start(stream));
-      await Promise.all(tasks);
+      // Run adapters in parallel but don't let one failure block the others.
+      // Set `ready` immediately so debug overlays render even if (e.g.) Whisper
+      // is still downloading its model.
       setReady(true);
+      const wrap = (name: string, p: Promise<void>) =>
+        p.catch((e) => console.error(`[usePerception] ${name} failed:`, e));
+      const tasks: Promise<unknown>[] = [];
+      if (s.enableGaze) tasks.push(wrap('gaze', gaze.current.start(stream)));
+      if (s.enableHand) tasks.push(wrap('hand', hand.current.start(stream)));
+      if (s.enableVoice) tasks.push(wrap('voice', voice.current.start(stream)));
+      await Promise.all(tasks);
     },
     stop() {
       gaze.current.stop();
