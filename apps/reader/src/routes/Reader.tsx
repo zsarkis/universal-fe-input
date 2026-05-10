@@ -1,7 +1,9 @@
 import { useNavigate, useParams } from 'react-router-dom';
 import { findArticle } from '../articles/index.js';
+import { useAutoScroll } from '../engine/useAutoScroll.js';
 
 export function Reader() {
+  useAutoScroll();
   const { id = '' } = useParams();
   const article = findArticle(id);
   const nav = useNavigate();
