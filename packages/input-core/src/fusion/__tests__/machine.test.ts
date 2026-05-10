@@ -221,6 +221,20 @@ describe('FusionMachine — abort signals', () => {
     m.feed(hand('open_palm', 0, 50));
     expect(m.state).toBe('IDLE');
   });
+
+  it('gaze leaving for >gazeAbortLeaveMs aborts ARMED', () => {
+    const targets = new TargetRegistry();
+    targets.register({ id: 'a', rect: { x: 0, y: 0, width: 100, height: 100 } });
+    const config = { ...DEFAULT_FUSION_CONFIG, gazeAbortLeaveMs: 100 };
+    const m = new FusionMachine({ targets, config });
+    m.feed(gaze(50, 50, 1, true, 0));
+    m.feed(voiceStart(0));
+    expect(m.state).toBe('ARMED');
+    m.feed(gaze(500, 500, 1, true, 50));
+    expect(m.state).toBe('ARMED'); // grace window not yet elapsed
+    m.feed(gaze(500, 500, 1, true, 200));
+    expect(m.state).toBe('IDLE');
+  });
 });
 
 describe('FusionMachine — DICTATING (voice-only)', () => {

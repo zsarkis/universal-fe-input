@@ -66,8 +66,9 @@ export class FusionMachine extends TypedEmitter<FusionEvents> {
       return;
     }
 
-    if (this.state === 'HOVERED') {
-      if (target && target.id === this.hoveredTargetId) {
+    if (this.state === 'HOVERED' || this.state === 'ARMED') {
+      const expectedId = this.state === 'HOVERED' ? this.hoveredTargetId : this.armedTargetId;
+      if (target && target.id === expectedId) {
         this.gazeLeftAt = null;
       } else {
         if (this.gazeLeftAt === null) this.gazeLeftAt = r.ts;
