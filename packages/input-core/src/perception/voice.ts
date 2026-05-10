@@ -83,11 +83,6 @@ export class VoiceAdapter
     }
   }
 
-  // Test-only entrypoint that skips MediaStream wiring
-  async startWithSamples(): Promise<void> {
-    return this.start(undefined as unknown as MediaStream);
-  }
-
   feedSamples(samples: Float32Array, ts: number): void {
     const ev = this.vad.feed(samples, ts);
     this.buffer.push(samples);

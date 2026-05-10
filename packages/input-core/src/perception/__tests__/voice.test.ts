@@ -18,7 +18,7 @@ describe('VoiceAdapter', () => {
     const a = new VoiceAdapter({ vadThreshold: 0.05, hangoverMs: 100 });
     const readings: unknown[] = [];
     a.on('reading', (r) => readings.push(r));
-    await a.startWithSamples();
+    await a.start(null as unknown as MediaStream);
     a.feedSamples(new Float32Array(160).fill(0.5), 0);
     a.feedSamples(new Float32Array(160).fill(0), 200);
     await Promise.resolve();
