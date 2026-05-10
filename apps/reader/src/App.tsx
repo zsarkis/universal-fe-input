@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { EngineProvider } from './engine/EngineProvider.js';
 import { GazeCursor } from './components/GazeCursor.js';
 import { Library } from './routes/Library.js';
+import { Reader } from './routes/Reader.js';
 
 export function App() {
   return (
@@ -9,6 +10,7 @@ export function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Library />} />
+          <Route path="/read/:id" element={<Reader />} />
         </Routes>
       </BrowserRouter>
       <GazeCursor />
