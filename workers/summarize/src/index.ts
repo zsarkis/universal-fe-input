@@ -52,7 +52,8 @@ export default {
         ],
       });
     } catch (e) {
-      return cors(new Response(`Upstream error: ${(e as Error).message}`, { status: 502 }));
+      console.error('Anthropic error:', e);
+      return cors(new Response('Upstream error', { status: 502 }));
     }
 
     if (!usingUserKey) await recordSpend(env.RATE, ESTIMATED_USD_PER_CALL, now);
