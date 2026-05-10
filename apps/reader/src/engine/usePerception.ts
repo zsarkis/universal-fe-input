@@ -8,6 +8,8 @@ export interface PerceptionHandle {
   stop(): void;
   lastGesture: string;
   lastTranscript: string | null;
+  micRms: number;
+  micThreshold: number;
 }
 
 export function usePerception(): PerceptionHandle & { ready: boolean } {
@@ -38,6 +40,8 @@ export function usePerception(): PerceptionHandle & { ready: boolean } {
     ready,
     get lastGesture() { return gestureRef.current; },
     get lastTranscript() { return transcriptRef.current; },
+    get micRms() { return voice.current.vad.lastRms; },
+    get micThreshold() { return 0.01; },
     async start() {
       const s = useSettings.getState();
       const stream = await navigator.mediaDevices.getUserMedia({

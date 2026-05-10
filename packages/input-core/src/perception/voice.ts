@@ -28,7 +28,7 @@ export class VoiceAdapter
 {
   status: AdapterStatus = 'idle';
   private transcriber: Transcriber | null = null;
-  private vad: EnergyVad;
+  vad: EnergyVad;
   private buffer: Float32Array[] = [];
   private readonly modelId: string;
   private audioContext: AudioContext | null = null;
@@ -37,7 +37,9 @@ export class VoiceAdapter
     super();
     this.modelId = opts.modelId ?? 'Xenova/whisper-tiny.en';
     this.vad = new EnergyVad({
-      threshold: opts.vadThreshold ?? 0.05,
+      // 0.01 picks up normal speech at typical mic levels; 0.05 was too high
+      // and meant VAD never tripped in dev.
+      threshold: opts.vadThreshold ?? 0.01,
       hangoverMs: opts.hangoverMs ?? 600,
     });
   }

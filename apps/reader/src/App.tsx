@@ -4,6 +4,7 @@ import { EngineProvider } from './engine/EngineProvider.js';
 import { GazeCursor } from './components/GazeCursor.js';
 import { VoiceIndicator } from './components/VoiceIndicator.js';
 import { GestureReadout } from './components/GestureReadout.js';
+import { MicMeter } from './components/MicMeter.js';
 import { HelpOverlay } from './components/HelpOverlay.js';
 import { Library } from './routes/Library.js';
 import { Reader } from './routes/Reader.js';
@@ -38,6 +39,7 @@ function PerceptionShell({ children }: { children: ReactNode }) {
         </button>
       )}
       <GestureReadout getGesture={() => p.lastGesture} />
+      {p.ready && <MicMeter getRms={() => p.micRms} getThreshold={() => p.micThreshold} />}
       {children}
     </>
   );
