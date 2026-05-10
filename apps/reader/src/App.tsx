@@ -5,6 +5,7 @@ import { VoiceIndicator } from './components/VoiceIndicator.js';
 import { GestureReadout } from './components/GestureReadout.js';
 import { Library } from './routes/Library.js';
 import { Reader } from './routes/Reader.js';
+import { Calibration } from './routes/Calibration.js';
 import { useIntentRouter } from './engine/useIntentRouter.js';
 
 function RoutedShell() {
@@ -13,6 +14,7 @@ function RoutedShell() {
     <Routes>
       <Route path="/" element={<Library />} />
       <Route path="/read/:id" element={<Reader />} />
+      <Route path="/calibrate" element={<Calibration />} />
     </Routes>
   );
 }

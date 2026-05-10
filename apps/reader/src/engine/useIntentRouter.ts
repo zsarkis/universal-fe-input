@@ -19,6 +19,9 @@ export function useIntentRouter() {
         case 'back':
           nav(-1);
           break;
+        case 'calibrate':
+          nav('/calibrate');
+          break;
         case 'scroll_down':
           window.scrollBy({ top: window.innerHeight * 0.6, behavior: 'smooth' });
           break;
