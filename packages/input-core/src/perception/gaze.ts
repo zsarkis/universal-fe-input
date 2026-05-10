@@ -1,4 +1,3 @@
-import webgazer from 'webgazer';
 import { TypedEmitter } from '../emitter.js';
 import type { GazeReading } from '../types.js';
 import { OneEuroFilter } from './one-euro.js';
@@ -27,6 +26,7 @@ export class GazeAdapter
   private readonly fx: OneEuroFilter;
   private readonly fy: OneEuroFilter;
   private readonly fixation: FixationDetector;
+  private wg: typeof import('webgazer').default | null = null;
 
   constructor(opts: GazeAdapterOptions = {}) {
     super();
@@ -40,7 +40,10 @@ export class GazeAdapter
     this.status = 'starting';
     this.emit('status', this.status);
     try {
-      webgazer
+      if (!this.wg) {
+        this.wg = (await import('webgazer')).default;
+      }
+      this.wg
         .setRegression('ridge')
         .showVideoPreview(false)
         .showPredictionPoints(false)
@@ -60,7 +63,7 @@ export class GazeAdapter
           };
           this.emit('reading', reading);
         });
-      await webgazer.begin();
+      await this.wg.begin();
       this.status = 'running';
       this.emit('status', this.status);
     } catch (e) {
@@ -72,7 +75,7 @@ export class GazeAdapter
   }
 
   stop(): void {
-    webgazer.end();
+    this.wg?.end();
     this.fx.reset();
     this.fy.reset();
     this.status = 'idle';
