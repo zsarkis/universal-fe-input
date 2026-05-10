@@ -53,3 +53,33 @@ describe('FusionMachine — IDLE → HOVERED', () => {
     expect(cb).toHaveBeenCalledWith({ from: 'IDLE', to: 'HOVERED', targetId: 'a' });
   });
 });
+
+describe('FusionMachine — HOVERED abort on gaze leave', () => {
+  it('returns to IDLE when gaze leaves the target for longer than gazeAbortLeaveMs', () => {
+    const targets = new TargetRegistry();
+    targets.register({ id: 'a', rect: { x: 0, y: 0, width: 100, height: 100 } });
+    const config = { ...DEFAULT_FUSION_CONFIG, gazeAbortLeaveMs: 100 };
+    const m = new FusionMachine({ targets, config });
+
+    m.feed(gaze(50, 50, 1, true, 0));
+    expect(m.state).toBe('HOVERED');
+
+    m.feed(gaze(500, 500, 1, true, 50));
+    expect(m.state).toBe('HOVERED'); // grace window not yet elapsed
+
+    m.feed(gaze(500, 500, 1, true, 200));
+    expect(m.state).toBe('IDLE');
+  });
+
+  it('does not abort if gaze returns to the target within the grace window', () => {
+    const targets = new TargetRegistry();
+    targets.register({ id: 'a', rect: { x: 0, y: 0, width: 100, height: 100 } });
+    const config = { ...DEFAULT_FUSION_CONFIG, gazeAbortLeaveMs: 100 };
+    const m = new FusionMachine({ targets, config });
+
+    m.feed(gaze(50, 50, 1, true, 0));
+    m.feed(gaze(500, 500, 1, true, 50));
+    m.feed(gaze(60, 60, 1, true, 80));
+    expect(m.state).toBe('HOVERED');
+  });
+});

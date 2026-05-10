@@ -25,6 +25,7 @@ export class FusionMachine extends TypedEmitter<FusionEvents> {
   hoveredTargetId: string | null = null;
   private readonly targets: TargetRegistry;
   private readonly config: FusionConfig;
+  private gazeLeftAt: number | null = null;
 
   constructor(deps: FusionDeps) {
     super();
@@ -44,6 +45,20 @@ export class FusionMachine extends TypedEmitter<FusionEvents> {
 
     if (this.state === 'IDLE' && target) {
       this.transition('HOVERED', target.id);
+      this.gazeLeftAt = null;
+      return;
+    }
+
+    if (this.state === 'HOVERED') {
+      if (target && target.id === this.hoveredTargetId) {
+        this.gazeLeftAt = null;
+      } else {
+        if (this.gazeLeftAt === null) this.gazeLeftAt = r.ts;
+        else if (r.ts - this.gazeLeftAt >= this.config.gazeAbortLeaveMs) {
+          this.transition('IDLE');
+          this.gazeLeftAt = null;
+        }
+      }
     }
   }
 
