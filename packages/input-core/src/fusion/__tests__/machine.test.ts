@@ -237,3 +237,29 @@ describe('FusionMachine — DICTATING (voice-only)', () => {
     expect(intents[0]?.targetId).toBeUndefined();
   });
 });
+
+describe('FusionMachine — CALIBRATING', () => {
+  it('setCalibrating(true) freezes the state and suppresses intents', () => {
+    const targets = new TargetRegistry();
+    targets.register({ id: 'a', rect: { x: 0, y: 0, width: 100, height: 100 } });
+    const m = new FusionMachine({ targets, config: DEFAULT_FUSION_CONFIG });
+    const intents: Intent[] = [];
+    m.on('intent', (i) => intents.push(i));
+    m.setCalibrating(true);
+    expect(m.state).toBe('CALIBRATING');
+    m.feed(gaze(50, 50, 1, true, 0));
+    m.feed(hand('pinch', 500, 100));
+    m.feed(voiceStart(0));
+    m.feed(voiceTranscript('open', 100));
+    expect(intents).toEqual([]);
+    expect(m.state).toBe('CALIBRATING');
+  });
+
+  it('setCalibrating(false) returns to IDLE', () => {
+    const targets = new TargetRegistry();
+    const m = new FusionMachine({ targets, config: DEFAULT_FUSION_CONFIG });
+    m.setCalibrating(true);
+    m.setCalibrating(false);
+    expect(m.state).toBe('IDLE');
+  });
+});

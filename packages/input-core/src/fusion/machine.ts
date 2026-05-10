@@ -37,9 +37,23 @@ export class FusionMachine extends TypedEmitter<FusionEvents> {
   }
 
   feed(reading: PerceptionReading): void {
+    if (this.state === 'CALIBRATING') return;
     if (reading.kind === 'gaze') this.onGaze(reading);
     else if (reading.kind === 'hand') this.onHand(reading);
     else if (reading.kind === 'voice') this.onVoice(reading);
+  }
+
+  setCalibrating(on: boolean): void {
+    if (on) {
+      const from = this.state;
+      this.state = 'CALIBRATING';
+      this.hoveredTargetId = null;
+      this.armedTargetId = null;
+      this.armedAt = null;
+      this.emit('state', { from, to: 'CALIBRATING' });
+    } else if (this.state === 'CALIBRATING') {
+      this.transition('IDLE');
+    }
   }
 
   private onGaze(r: GazeReading): void {
