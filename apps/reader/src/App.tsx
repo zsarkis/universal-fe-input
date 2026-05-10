@@ -1,10 +1,13 @@
-import { VERSION } from '@input/core';
+import { EngineProvider } from './engine/EngineProvider.js';
+import { GazeCursor } from './components/GazeCursor.js';
 
 export function App() {
   return (
-    <main style={{ padding: 24, fontFamily: 'system-ui' }}>
-      <h1>Universal FE Input — Reader</h1>
-      <p>Engine version: {VERSION}</p>
-    </main>
+    <EngineProvider>
+      <main className="min-h-screen p-8">
+        <h1 className="text-3xl">Universal FE Input — Reader</h1>
+      </main>
+      <GazeCursor />
+    </EngineProvider>
   );
 }
