@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { GazeAdapter, HandAdapter, VoiceAdapter } from '@input/core';
 import { useEngine } from './useEngine.js';
+import { useSettings } from '../store/settings.js';
 
 export interface PerceptionHandle {
   start(): Promise<void>;
@@ -38,12 +39,16 @@ export function usePerception(): PerceptionHandle & { ready: boolean } {
     get lastGesture() { return gestureRef.current; },
     get lastTranscript() { return transcriptRef.current; },
     async start() {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      await Promise.all([
-        gaze.current.start(stream),
-        hand.current.start(stream),
-        voice.current.start(stream),
-      ]);
+      const s = useSettings.getState();
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: s.enableGaze || s.enableHand,
+        audio: s.enableVoice,
+      });
+      const tasks: Promise<void>[] = [];
+      if (s.enableGaze) tasks.push(gaze.current.start(stream));
+      if (s.enableHand) tasks.push(hand.current.start(stream));
+      if (s.enableVoice) tasks.push(voice.current.start(stream));
+      await Promise.all(tasks);
       setReady(true);
     },
     stop() {

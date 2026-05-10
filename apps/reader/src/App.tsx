@@ -7,6 +7,7 @@ import { GestureReadout } from './components/GestureReadout.js';
 import { Library } from './routes/Library.js';
 import { Reader } from './routes/Reader.js';
 import { Calibration } from './routes/Calibration.js';
+import { Settings } from './routes/Settings.js';
 import { useIntentRouter } from './engine/useIntentRouter.js';
 import { usePerception } from './engine/usePerception.js';
 
@@ -17,6 +18,7 @@ function RoutedShell() {
       <Route path="/" element={<Library />} />
       <Route path="/read/:id" element={<Reader />} />
       <Route path="/calibrate" element={<Calibration />} />
+      <Route path="/settings" element={<Settings />} />
     </Routes>
   );
 }
