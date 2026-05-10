@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useEngine } from './useEngine.js';
+import { useUi } from '../store/ui.js';
 
 export function useIntentRouter() {
   const { engine } = useEngine();
@@ -23,7 +24,7 @@ export function useIntentRouter() {
           nav('/calibrate');
           break;
         case 'help':
-          nav('/settings');
+          useUi.getState().setHelp(true);
           break;
         case 'scroll_down':
           window.scrollBy({ top: window.innerHeight * 0.6, behavior: 'smooth' });

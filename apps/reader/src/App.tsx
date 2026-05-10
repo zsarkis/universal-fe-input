@@ -4,12 +4,14 @@ import { EngineProvider } from './engine/EngineProvider.js';
 import { GazeCursor } from './components/GazeCursor.js';
 import { VoiceIndicator } from './components/VoiceIndicator.js';
 import { GestureReadout } from './components/GestureReadout.js';
+import { HelpOverlay } from './components/HelpOverlay.js';
 import { Library } from './routes/Library.js';
 import { Reader } from './routes/Reader.js';
 import { Calibration } from './routes/Calibration.js';
 import { Settings } from './routes/Settings.js';
 import { useIntentRouter } from './engine/useIntentRouter.js';
 import { usePerception } from './engine/usePerception.js';
+import { useUi } from './store/ui.js';
 
 function RoutedShell() {
   useIntentRouter();
@@ -41,6 +43,11 @@ function PerceptionShell({ children }: { children: ReactNode }) {
   );
 }
 
+function HelpHost() {
+  const { helpOpen, setHelp } = useUi();
+  return <HelpOverlay open={helpOpen} onClose={() => setHelp(false)} />;
+}
+
 export function App() {
   return (
     <EngineProvider>
@@ -51,6 +58,7 @@ export function App() {
       </BrowserRouter>
       <GazeCursor />
       <VoiceIndicator />
+      <HelpHost />
     </EngineProvider>
   );
 }
