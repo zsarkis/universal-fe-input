@@ -209,3 +209,16 @@ describe('FusionMachine — two-signal voice path', () => {
     expect(m.state).toBe('IDLE');
   });
 });
+
+describe('FusionMachine — abort signals', () => {
+  it('open_palm aborts ARMED', () => {
+    const targets = new TargetRegistry();
+    targets.register({ id: 'a', rect: { x: 0, y: 0, width: 100, height: 100 } });
+    const m = new FusionMachine({ targets, config: DEFAULT_FUSION_CONFIG });
+    m.feed(gaze(50, 50, 1, true, 0));
+    m.feed(voiceStart(0));
+    expect(m.state).toBe('ARMED');
+    m.feed(hand('open_palm', 0, 50));
+    expect(m.state).toBe('IDLE');
+  });
+});
