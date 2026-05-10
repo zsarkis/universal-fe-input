@@ -1,0 +1,23 @@
+import type { Article } from './index.js';
+
+const article: Article = {
+  id: 'death-of-the-moth',
+  title: 'Notes on Stillness',
+  author: 'Marian Glass',
+  estimatedMinutes: 4,
+  body: `There is a particular hour, somewhere between four and five in the afternoon, when the light in this part of the country grows tired. It does not fade so much as soften, the way a voice softens when the speaker has been talking for a long time and is no longer worried about being heard. The walls of my study hold the color for a moment longer than the windows do, and during that brief moment I sometimes catch myself sitting with my hands flat on the desk, doing nothing, looking at nothing in particular, listening for the small noise of the house adjusting itself to the cooling air.
+
+I have come to think of stillness as a kind of practice. Not the dramatic stillness of meditation halls, nor the held breath of a hunter waiting for a deer to step into the clearing, but the ordinary stillness that any of us can find if we are willing to put down the next thing. It is harder than it sounds. There is always a next thing. The tea wants making, the light needs adjusting, a sentence in the morning's letter wants rewriting, and behind these legitimate small tasks waits a great hungry queue of obligations, half of them invented by my own anxieties. To sit and let them go past me without flagging any of them down feels, at first, like an act of mild rebellion.
+
+The reward, when it comes, is not insight. I should say that plainly, because I think a lot of writing about stillness promises insight, and I would rather not raise expectations I cannot meet. What stillness offers, in my experience, is something more modest: a slight enlargement of the field of view. The hand on the desk turns out to have a faint scar I had forgotten. The grain of the wood, which I bought four years ago and have leaned my elbows on every day since, contains a small dark whorl that looks, if I tilt my head, exactly like the eye of a fish. The window, which I have considered merely a window, is in fact a complicated piece of architecture, with old paint on the frame and a tiny crack at one corner that admits, in winter, a thin and patient draft.
+
+None of this is important. That is the point. The world is full of unimportant detail, and most of the time we are correct to ignore it. We have lives to manage, people to feed, deadlines that arrive whether we acknowledge them or not. But every now and then it is good, I think, to step out of the river for a few minutes and notice that the river has banks, and that the banks have stones, and that the stones have lichen, and that the lichen, if you bring your face close enough, is a small green city with its own weather.
+
+A friend of mine, a painter, once told me that the difference between a beginning student and a serious one is not skill, exactly. It is the willingness to look at the same object for ten minutes without becoming bored. Beginners glance and decide. Serious painters look until the object surprises them. I have thought about this often. I do not paint. But I write, and the principle, I have come to believe, is the same. The first description of anything is almost always wrong, or at least incomplete, because it is built out of what we already think the thing is. Only by sitting with the thing, by refusing to settle for the first description, do we start to notice the parts of it that resist our prior knowledge.
+
+This, perhaps, is what stillness is for. Not as an escape from the world but as a slower, more accurate way of being inside it. The hour between four and five passes. The light goes amber, then brown, then the lamp on the corner of the desk takes over and the window becomes a black mirror with my own reflection in it. I see, in that reflection, a person who has spent the better part of an afternoon doing nothing, and who is, somehow, less tired than when she began. I think this is the real argument for stillness, if any argument is needed. It is restorative not because it empties us but because it lets the world fill us at a pace we can actually absorb.
+
+I will get up in a moment. There is dinner to think about, and a letter I owe my brother, and the cat has begun to make the small inquiring noise that means she has decided it is time. The river resumes. But for the next thirty seconds, while the lamp warms and the window darkens and the wood grain holds its small fish-eye whorl, I am going to sit here and look. There will not be any insight. There will only be looking, which is, I have come to believe, enough.`,
+};
+
+export default article;
