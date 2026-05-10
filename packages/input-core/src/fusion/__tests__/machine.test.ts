@@ -135,3 +135,77 @@ describe('FusionMachine — single-signal pinch commit', () => {
     expect(intents).toEqual([]);
   });
 });
+
+import type { Intent, IntentName, VoiceReading } from '../../types.js';
+
+const voiceStart = (ts: number): VoiceReading => ({ kind: 'voice', phase: 'started', ts });
+const voiceTranscript = (
+  intent: IntentName | null,
+  ts: number,
+  transcript = String(intent),
+): VoiceReading => ({
+  kind: 'voice',
+  phase: 'transcript',
+  transcript,
+  intent,
+  confidence: 0.9,
+  ts,
+});
+
+describe('FusionMachine — two-signal voice path', () => {
+  it('HOVERED + voice "started" → ARMED, then transcript "open" → COMMITTED with target', () => {
+    const targets = new TargetRegistry();
+    targets.register({ id: 'a', rect: { x: 0, y: 0, width: 100, height: 100 } });
+    const m = new FusionMachine({ targets, config: DEFAULT_FUSION_CONFIG });
+    const intents: Intent[] = [];
+    m.on('intent', (i) => intents.push(i));
+
+    m.feed(gaze(50, 50, 1, true, 0));
+    expect(m.state).toBe('HOVERED');
+
+    m.feed(voiceStart(50));
+    expect(m.state).toBe('ARMED');
+    expect(m.armedTargetId).toBe('a'); // pre-resolved from current hover
+
+    m.feed(voiceTranscript('open', 200));
+    expect(m.state).toBe('IDLE');
+    expect(intents).toEqual([
+      expect.objectContaining({ name: 'open', targetId: 'a' }),
+    ]);
+  });
+
+  it('ARMED times out and aborts after armTimeoutMs', () => {
+    const targets = new TargetRegistry();
+    targets.register({ id: 'a', rect: { x: 0, y: 0, width: 100, height: 100 } });
+    const config = { ...DEFAULT_FUSION_CONFIG, armTimeoutMs: 200 };
+    const m = new FusionMachine({ targets, config });
+    m.feed(gaze(50, 50, 1, true, 0));
+    m.feed(voiceStart(0));
+    expect(m.state).toBe('ARMED');
+    m.tick(250);
+    expect(m.state).toBe('IDLE');
+  });
+
+  it('voice transcript with null intent leaves ARMED and eventually times out', () => {
+    const targets = new TargetRegistry();
+    targets.register({ id: 'a', rect: { x: 0, y: 0, width: 100, height: 100 } });
+    const config = { ...DEFAULT_FUSION_CONFIG, armTimeoutMs: 200 };
+    const m = new FusionMachine({ targets, config });
+    m.feed(gaze(50, 50, 1, true, 0));
+    m.feed(voiceStart(0));
+    m.feed(voiceTranscript(null, 50, 'blueberry'));
+    expect(m.state).toBe('ARMED');
+    m.tick(300);
+    expect(m.state).toBe('IDLE');
+  });
+
+  it('voice transcript "cancel" while ARMED aborts', () => {
+    const targets = new TargetRegistry();
+    targets.register({ id: 'a', rect: { x: 0, y: 0, width: 100, height: 100 } });
+    const m = new FusionMachine({ targets, config: DEFAULT_FUSION_CONFIG });
+    m.feed(gaze(50, 50, 1, true, 0));
+    m.feed(voiceStart(0));
+    m.feed(voiceTranscript('cancel', 50));
+    expect(m.state).toBe('IDLE');
+  });
+});

@@ -23,6 +23,9 @@ export interface FusionDeps {
 export class FusionMachine extends TypedEmitter<FusionEvents> {
   state: FusionState = 'IDLE';
   hoveredTargetId: string | null = null;
+  armedTargetId: string | null = null;
+  private armedAt: number | null = null;
+  private lastTickTs = 0;
   private readonly targets: TargetRegistry;
   private readonly config: FusionConfig;
   private gazeLeftAt: number | null = null;
@@ -79,8 +82,54 @@ export class FusionMachine extends TypedEmitter<FusionEvents> {
     }
   }
 
-  private onVoice(_r: VoiceReading): void {
-    // implemented in later tasks
+  private onVoice(r: VoiceReading): void {
+    if (r.phase === 'started') {
+      if (this.state === 'HOVERED' && this.hoveredTargetId) {
+        this.armedTargetId = this.hoveredTargetId;
+        this.armedAt = r.ts;
+        this.transition('ARMED');
+      } else if (this.state === 'IDLE') {
+        this.transition('DICTATING');
+        this.armedAt = r.ts;
+      }
+      return;
+    }
+
+    // r.phase === 'transcript'
+    if (r.intent === 'cancel') {
+      this.armedTargetId = null;
+      this.armedAt = null;
+      this.transition('IDLE');
+      return;
+    }
+
+    if (this.state === 'ARMED' && r.intent) {
+      const targetId = this.armedTargetId ?? undefined;
+      this.emit('intent', { name: r.intent, targetId, ts: r.ts });
+      this.armedTargetId = null;
+      this.armedAt = null;
+      this.transition('IDLE');
+      return;
+    }
+
+    if (this.state === 'DICTATING' && r.intent) {
+      this.emit('intent', { name: r.intent, ts: r.ts });
+      this.armedAt = null;
+      this.transition('IDLE');
+      return;
+    }
+    // Null intent: leave state unchanged; armTimeout will sweep us to IDLE.
+  }
+
+  tick(now: number): void {
+    this.lastTickTs = now;
+    if ((this.state === 'ARMED' || this.state === 'DICTATING') && this.armedAt !== null) {
+      if (now - this.armedAt >= this.config.armTimeoutMs) {
+        this.armedTargetId = null;
+        this.armedAt = null;
+        this.transition('IDLE');
+      }
+    }
   }
 
   private transition(to: FusionState, targetId?: string): void {
@@ -88,7 +137,11 @@ export class FusionMachine extends TypedEmitter<FusionEvents> {
     if (from === to) return;
     this.state = to;
     if (to === 'HOVERED' && targetId) this.hoveredTargetId = targetId;
-    if (to === 'IDLE') this.hoveredTargetId = null;
+    if (to === 'IDLE') {
+      this.hoveredTargetId = null;
+      this.armedTargetId = null;
+      this.armedAt = null;
+    }
     this.emit('state', { from, to, targetId });
   }
 }
