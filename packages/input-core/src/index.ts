@@ -5,3 +5,7 @@ export type { InputEngine } from './engine.js';
 export { TargetRegistry } from './targets.js';
 export { resolveIntent } from './intents/grammar.js';
 export * from './perception/adapter.js';
+export { GazeAdapter } from './perception/gaze.js';
+export { HandAdapter } from './perception/hand.js';
+export { VoiceAdapter } from './perception/voice.js';
+export { ninePointTargets } from './calibration/nine-point.js';
