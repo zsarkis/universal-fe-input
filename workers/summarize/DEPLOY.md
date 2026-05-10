@@ -77,7 +77,7 @@ Rebuild the reader (`pnpm --filter @apps/reader build`) and redeploy if it's als
 The worker has these guardrails (configured in `wrangler.toml` and `src/index.ts`):
 
 - Per-IP rate limit: 10 calls / hour (sliding window).
-- Daily spend cap: `$1.0/day` (`DAILY_SPEND_CAP_USD` env var).
+- Daily spend cap: `$1.0/day` (`DAILY_SPEND_CAP_USD` env var). Best-effort under concurrency — see `src/spend-cap.ts` for the TOCTOU caveat.
 - Estimated cost per call: ~$0.003 (used to project the cap).
 - Max input size: 50,000 characters per request.
 

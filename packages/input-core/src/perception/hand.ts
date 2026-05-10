@@ -90,6 +90,7 @@ export class HandAdapter
       this.gestureSince = { gesture, ts };
     }
     const heldMs = ts - (this.gestureSince?.ts ?? ts);
+    // MediaPipe HandLandmarker does not expose per-prediction confidence; this is a fixed stand-in.
     const reading: HandReading = {
       kind: 'hand',
       gesture: gesture as HandReading['gesture'],

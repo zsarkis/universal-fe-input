@@ -1,3 +1,7 @@
+// Best-effort daily spend cap. KV has no compare-and-swap, so concurrent
+// requests can both pass `reserveSpend` and both call `recordSpend`,
+// briefly exceeding the cap. Acceptable for a portfolio deploy with a $1/day
+// cap; for production, replace KV with a Durable Object counter.
 const day = (now: number) => new Date(now).toISOString().slice(0, 10);
 
 export async function reserveSpend(

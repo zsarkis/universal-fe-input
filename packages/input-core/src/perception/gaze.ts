@@ -54,6 +54,8 @@ export class GazeAdapter
           const x = this.fx.filter(data.x, ts);
           const y = this.fy.filter(data.y, ts);
           const fixated = this.fixation.update(x, y, ts);
+          // WebGazer does not expose per-prediction confidence; this is a fixed stand-in.
+          // Tuning `gazeConfidenceMin` will not change behavior until WebGazer changes.
           const reading: GazeReading = {
             kind: 'gaze',
             x,
