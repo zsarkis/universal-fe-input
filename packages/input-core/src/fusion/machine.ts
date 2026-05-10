@@ -62,8 +62,21 @@ export class FusionMachine extends TypedEmitter<FusionEvents> {
     }
   }
 
-  private onHand(_r: HandReading): void {
-    // implemented in later tasks
+  private onHand(r: HandReading): void {
+    if (r.gesture === 'open_palm' && this.state !== 'IDLE') {
+      this.transition('IDLE');
+      return;
+    }
+    if (
+      r.gesture === 'pinch' &&
+      r.heldMs >= this.config.commitPinchMs &&
+      this.state === 'HOVERED' &&
+      this.hoveredTargetId
+    ) {
+      const targetId = this.hoveredTargetId;
+      this.emit('intent', { name: 'select', targetId, ts: r.ts });
+      this.transition('IDLE');
+    }
   }
 
   private onVoice(_r: VoiceReading): void {
