@@ -1,12 +1,16 @@
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { EngineProvider } from './engine/EngineProvider.js';
 import { GazeCursor } from './components/GazeCursor.js';
+import { Library } from './routes/Library.js';
 
 export function App() {
   return (
     <EngineProvider>
-      <main className="min-h-screen p-8">
-        <h1 className="text-3xl">Universal FE Input — Reader</h1>
-      </main>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Library />} />
+        </Routes>
+      </BrowserRouter>
       <GazeCursor />
     </EngineProvider>
   );
