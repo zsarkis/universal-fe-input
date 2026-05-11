@@ -32,25 +32,31 @@ export function Calibration() {
   const points = ninePointTargets({ width: size.w, height: size.h, marginPct: 10 });
   const point = points[i];
 
-  // Settle phase → sampling phase, then advance.
+  const totalPoints = points.length;
+  const pointX = point?.x ?? 0;
+  const pointY = point?.y ?? 0;
+  const havePoint = !!point;
+
+  // Settle phase → sampling phase. Only re-runs when `i` changes.
   useEffect(() => {
-    if (!point) return;
+    if (!havePoint) return;
     setPhase('settle');
     const settleTimer = setTimeout(() => setPhase('sampling'), SETTLE_MS);
     return () => clearTimeout(settleTimer);
-  }, [i, point]);
+  }, [i, havePoint]);
 
+  // Sampling phase: collect features for SAMPLE_MS, then advance or finish.
   useEffect(() => {
-    if (!point || phase !== 'sampling') return;
+    if (!havePoint || phase !== 'sampling') return;
     const sampleTimer = setInterval(() => {
       const features = sharedGaze.getFeatures();
       if (features) {
-        collected.current.push({ screenX: point.x, screenY: point.y, features });
+        collected.current.push({ screenX: pointX, screenY: pointY, features });
       }
     }, SAMPLE_INTERVAL_MS);
     const advance = setTimeout(() => {
       clearInterval(sampleTimer);
-      if (i + 1 >= points.length) {
+      if (i + 1 >= totalPoints) {
         sharedGaze.setCalibration(collected.current);
         nav('/');
       } else {
@@ -61,7 +67,7 @@ export function Calibration() {
       clearInterval(sampleTimer);
       clearTimeout(advance);
     };
-  }, [i, phase, nav, point, points.length]);
+  }, [i, phase, nav, havePoint, pointX, pointY, totalPoints]);
 
   if (!point) return null;
 
