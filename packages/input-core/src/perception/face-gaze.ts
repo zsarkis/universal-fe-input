@@ -13,34 +13,50 @@ const WASM_URL = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/w
 const MODEL_URL =
   'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
 
-// Standard 478-point face mesh model.
-// Left iris: 468-472. Right iris: 473-477. Centers (we use index 0 of each).
 const LEFT_IRIS_CENTER = 468;
 const RIGHT_IRIS_CENTER = 473;
-// Eye corner landmarks for normalizing iris position against the eye socket.
 const LEFT_EYE_OUTER = 33;
 const LEFT_EYE_INNER = 133;
 const RIGHT_EYE_OUTER = 263;
 const RIGHT_EYE_INNER = 362;
-// Eye top/bottom for vertical normalization.
 const LEFT_EYE_TOP = 159;
 const LEFT_EYE_BOTTOM = 145;
 const RIGHT_EYE_TOP = 386;
 const RIGHT_EYE_BOTTOM = 374;
 
-/** A single calibration sample: where the user looked, and the raw iris features at that moment. */
+/** Raw per-frame features extracted from face landmarks + head pose. */
+export interface GazeFeatures {
+  // Iris position within each eye socket, normalized to roughly [-1, 1].
+  lx: number;
+  ly: number;
+  rx: number;
+  ry: number;
+  // Head pose: yaw, pitch, roll (radians) and translation (tx,ty,tz in model units).
+  yaw: number;
+  pitch: number;
+  roll: number;
+  tx: number;
+  ty: number;
+  tz: number;
+}
+
+/** A single calibration sample: where the user looked, and the features at that moment. */
 export interface FaceGazeCalibrationSample {
   screenX: number;
   screenY: number;
-  features: { lx: number; ly: number; rx: number; ry: number };
+  features: GazeFeatures;
 }
 
-interface AffineFit {
-  // x = ax*lx + bx*rx + cx*ly + dx*ry + ex
-  // y = ay*lx + by*rx + cy*ly + dy*ry + ey
-  ax: number; bx: number; cx: number; dx: number; ex: number;
-  ay: number; by: number; cy: number; dy: number; ey: number;
+/** Coefficient vector for one axis. Length = NUM_TERMS. */
+type Coefficients = number[];
+
+interface PolyFit {
+  x: Coefficients;
+  y: Coefficients;
+  version: number;
 }
+
+const FIT_VERSION = 2;
 
 export interface FaceGazeAdapterOptions {
   oneEuro?: { minCutoff: number; beta: number; dCutoff: number };
@@ -48,11 +64,30 @@ export interface FaceGazeAdapterOptions {
 }
 
 const DEFAULTS: Required<FaceGazeAdapterOptions> = {
-  oneEuro: { minCutoff: 0.8, beta: 0.1, dCutoff: 1 },
+  // Heavier smoothing than before. minCutoff=0.3 = ~3s smoothing window
+  // when stationary; beta=0.15 lets quick saccades through.
+  oneEuro: { minCutoff: 0.3, beta: 0.15, dCutoff: 1 },
   fixation: { radiusPx: 60, dwellMs: 100 },
 };
 
-const STORAGE_KEY = 'face-gaze-calibration-v1';
+const STORAGE_KEY = 'face-gaze-calibration-v2';
+
+/** Build the polynomial feature vector for regression. Must match between fit and apply. */
+function expandFeatures(f: GazeFeatures): number[] {
+  // Average per-axis iris position is a more stable estimator than either eye alone.
+  const ax = (f.lx + f.rx) / 2;
+  const ay = (f.ly + f.ry) / 2;
+  return [
+    1,
+    f.lx, f.rx, f.ly, f.ry,
+    f.yaw, f.pitch, f.roll,
+    ax * f.yaw, // iris-x compensated by head yaw (the big win for head-movement drift)
+    ay * f.pitch, // iris-y compensated by head pitch
+    ax * ax,
+    ay * ay,
+  ];
+}
+const NUM_TERMS = 12;
 
 export class FaceGazeAdapter
   extends TypedEmitter<PerceptionAdapterEvents>
@@ -65,8 +100,8 @@ export class FaceGazeAdapter
   private readonly fx: OneEuroFilter;
   private readonly fy: OneEuroFilter;
   private readonly fixation: FixationDetector;
-  private fit: AffineFit | null = null;
-  private latestFeatures: { lx: number; ly: number; rx: number; ry: number } | null = null;
+  private fit: PolyFit | null = null;
+  private latestFeatures: GazeFeatures | null = null;
 
   constructor(opts: FaceGazeAdapterOptions = {}) {
     super();
@@ -86,7 +121,7 @@ export class FaceGazeAdapter
       this.landmarker = await FaceLandmarker.createFromOptions(fileset, {
         baseOptions: { modelAssetPath: MODEL_URL },
         outputFaceBlendshapes: false,
-        outputFacialTransformationMatrixes: false,
+        outputFacialTransformationMatrixes: true,
         runningMode: 'VIDEO',
         numFaces: 1,
       });
@@ -124,18 +159,23 @@ export class FaceGazeAdapter
     this.emit('status', this.status);
   }
 
-  /** Latest iris-relative-to-eye features, cached from the most recent tick. */
-  getFeatures(): { lx: number; ly: number; rx: number; ry: number } | null {
+  getFeatures(): GazeFeatures | null {
     return this.latestFeatures;
   }
 
-  /** Fit an affine transform from collected samples. Need at least 5 distinct points. */
   setCalibration(samples: FaceGazeCalibrationSample[]): void {
-    if (samples.length < 5) {
+    if (samples.length < NUM_TERMS) {
       this.fit = null;
       return;
     }
-    this.fit = leastSquaresAffine(samples);
+    const xs = samples.map((s) => expandFeatures(s.features));
+    const yx = samples.map((s) => s.screenX);
+    const yy = samples.map((s) => s.screenY);
+    this.fit = {
+      x: ridgeRegression(xs, yx),
+      y: ridgeRegression(xs, yy),
+      version: FIT_VERSION,
+    };
     this.saveFit();
   }
 
@@ -169,17 +209,15 @@ export class FaceGazeAdapter
     const features = extractFeatures(result);
     if (!features) return;
     this.latestFeatures = features;
-    const screen = this.fit ? applyFit(this.fit, features) : null;
-    if (!screen) return;
-    const x = this.fx.filter(screen.x, ts);
-    const y = this.fy.filter(screen.y, ts);
+    if (!this.fit) return;
+    const expanded = expandFeatures(features);
+    const x = this.fx.filter(dot(this.fit.x, expanded), ts);
+    const y = this.fy.filter(dot(this.fit.y, expanded), ts);
     const fixated = this.fixation.update(x, y, ts);
     const reading: GazeReading = {
       kind: 'gaze',
       x,
       y,
-      // MediaPipe doesn't expose a per-frame confidence here either, but
-      // the model is dramatically more reliable than WebGazer's regression.
       confidence: 0.95,
       fixated,
       ts,
@@ -198,16 +236,22 @@ export class FaceGazeAdapter
   private loadFit(): void {
     try {
       const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null;
-      if (raw) this.fit = JSON.parse(raw) as AffineFit;
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as PolyFit;
+      if (parsed.version === FIT_VERSION) this.fit = parsed;
     } catch {
       // ignore
     }
   }
 }
 
-function extractFeatures(
-  result: FaceLandmarkerResult,
-): { lx: number; ly: number; rx: number; ry: number } | null {
+function dot(a: number[], b: number[]): number {
+  let s = 0;
+  for (let i = 0; i < a.length; i++) s += a[i]! * b[i]!;
+  return s;
+}
+
+function extractFeatures(result: FaceLandmarkerResult): GazeFeatures | null {
   const lms = result.faceLandmarks?.[0];
   if (!lms || lms.length < 478) return null;
 
@@ -222,8 +266,6 @@ function extractFeatures(
   const rt = lms[RIGHT_EYE_TOP]!;
   const rb = lms[RIGHT_EYE_BOTTOM]!;
 
-  // Normalize iris position to [-1, 1] within each eye socket.
-  // Left eye: outer (33) is to the LEFT of inner (133) in mirror view.
   const lWidth = lei.x - leo.x || 1e-6;
   const lHeight = leb.y - let_.y || 1e-6;
   const lx = ((li.x - leo.x) / lWidth) * 2 - 1;
@@ -231,60 +273,61 @@ function extractFeatures(
 
   const rWidth = rei.x - reo.x || 1e-6;
   const rHeight = rb.y - rt.y || 1e-6;
-  // For right eye, the "outer" (263) is to the RIGHT of inner (362), so reverse.
   const rx = ((ri.x - rei.x) / rWidth) * 2 - 1;
   const ry = ((ri.y - rt.y) / rHeight) * 2 - 1;
 
-  return { lx, ly, rx, ry };
-}
+  // Head pose from the 4x4 column-major transformation matrix.
+  // Default to identity (zero rotation, zero translation) if missing.
+  let yaw = 0, pitch = 0, roll = 0, tx = 0, ty = 0, tz = 0;
+  const m = result.facialTransformationMatrixes?.[0];
+  if (m && m.data && m.data.length >= 16) {
+    // mediapipe Matrix is column-major: data[col*rows + row]
+    const r00 = m.data[0]!; // r00
+    const r10 = m.data[1]!; // r10
+    const r20 = m.data[2]!; // r20
+    const r21 = m.data[6]!; // r21
+    const r22 = m.data[10]!; // r22
+    // Translation is the last column
+    tx = m.data[12]!;
+    ty = m.data[13]!;
+    tz = m.data[14]!;
+    // Euler angles (YXZ convention; works well near upright)
+    pitch = Math.atan2(-r21, r22);
+    yaw = Math.asin(Math.max(-1, Math.min(1, r20)));
+    roll = Math.atan2(-r10, r00);
+  }
 
-function applyFit(
-  fit: AffineFit,
-  f: { lx: number; ly: number; rx: number; ry: number },
-): { x: number; y: number } {
-  const x = fit.ax * f.lx + fit.bx * f.rx + fit.cx * f.ly + fit.dx * f.ry + fit.ex;
-  const y = fit.ay * f.lx + fit.by * f.rx + fit.cy * f.ly + fit.dy * f.ry + fit.ey;
-  return { x, y };
+  return { lx, ly, rx, ry, yaw, pitch, roll, tx, ty, tz };
 }
 
 /**
- * Solve two independent 5-parameter linear regressions (one for x, one for y)
- * using normal equations. With 5+ samples this is well-conditioned in practice.
+ * Ridge regression: solve (X^T X + λI) β = X^T y. Ridge is required here because
+ * with 9 calibration points and 12 features the unregularized normal equations
+ * are underdetermined; ridge stabilizes them and prevents overfit.
  */
-function leastSquaresAffine(samples: FaceGazeCalibrationSample[]): AffineFit {
-  const N = samples.length;
-  // Design matrix X is N x 5: [lx, rx, ly, ry, 1]
-  // We solve (X^T X) β = X^T y separately for screenX and screenY.
-  const xtx = new Array(25).fill(0) as number[];
-  const xty_x = new Array(5).fill(0) as number[];
-  const xty_y = new Array(5).fill(0) as number[];
-
-  for (const s of samples) {
-    const row = [s.features.lx, s.features.rx, s.features.ly, s.features.ry, 1];
-    for (let i = 0; i < 5; i++) {
-      for (let j = 0; j < 5; j++) {
-        xtx[i * 5 + j]! += row[i]! * row[j]!;
+function ridgeRegression(X: number[][], y: number[]): number[] {
+  const lambda = 0.5;
+  const n = X[0]?.length ?? 0;
+  const xtx = new Array(n * n).fill(0) as number[];
+  const xty = new Array(n).fill(0) as number[];
+  for (let s = 0; s < X.length; s++) {
+    const row = X[s]!;
+    const ys = y[s]!;
+    for (let i = 0; i < n; i++) {
+      xty[i]! += row[i]! * ys;
+      for (let j = 0; j < n; j++) {
+        xtx[i * n + j]! += row[i]! * row[j]!;
       }
-      xty_x[i]! += row[i]! * s.screenX;
-      xty_y[i]! += row[i]! * s.screenY;
     }
   }
-
-  const bx = solve5x5(xtx.slice(), xty_x.slice());
-  const by = solve5x5(xtx.slice(), xty_y.slice());
-
-  void N;
-  return {
-    ax: bx[0]!, bx: bx[1]!, cx: bx[2]!, dx: bx[3]!, ex: bx[4]!,
-    ay: by[0]!, by: by[1]!, cy: by[2]!, dy: by[3]!, ey: by[4]!,
-  };
+  // Add λI (skip bias term at index 0 — don't penalize the intercept).
+  for (let i = 1; i < n; i++) xtx[i * n + i]! += lambda;
+  return solveGaussian(xtx, xty, n);
 }
 
-/** Gaussian elimination on a 5x5 system. Mutates the inputs. */
-function solve5x5(a: number[], b: number[]): number[] {
-  const n = 5;
+/** Gaussian elimination with partial pivoting on an n×n system. */
+function solveGaussian(a: number[], b: number[], n: number): number[] {
   for (let i = 0; i < n; i++) {
-    // Partial pivoting.
     let maxRow = i;
     let maxVal = Math.abs(a[i * n + i]!);
     for (let k = i + 1; k < n; k++) {
@@ -302,15 +345,10 @@ function solve5x5(a: number[], b: number[]): number[] {
       b[maxRow] = tmp;
     }
     const pivot = a[i * n + i]!;
-    if (Math.abs(pivot) < 1e-12) {
-      // Degenerate; return zeros for this row's contribution.
-      continue;
-    }
+    if (Math.abs(pivot) < 1e-12) continue;
     for (let k = i + 1; k < n; k++) {
       const factor = a[k * n + i]! / pivot;
-      for (let j = i; j < n; j++) {
-        a[k * n + j]! -= factor * a[i * n + j]!;
-      }
+      for (let j = i; j < n; j++) a[k * n + j]! -= factor * a[i * n + j]!;
       b[k]! -= factor * b[i]!;
     }
   }
