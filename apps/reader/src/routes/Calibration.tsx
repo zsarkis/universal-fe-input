@@ -9,11 +9,13 @@ const SETTLE_MS = 500;
 const SAMPLE_MS = 1000;
 const SAMPLE_INTERVAL_MS = 50;
 
+type Phase = 'intro' | 'settle' | 'sampling';
+
 export function Calibration() {
   const { engine } = useEngine();
   const nav = useNavigate();
   const [i, setI] = useState(0);
-  const [phase, setPhase] = useState<'settle' | 'sampling'>('settle');
+  const [phase, setPhase] = useState<Phase>('intro');
   const [size, setSize] = useState({ w: window.innerWidth, h: window.innerHeight });
   const collected = useRef<FaceGazeCalibrationSample[]>([]);
 
@@ -36,14 +38,20 @@ export function Calibration() {
   const pointX = point?.x ?? 0;
   const pointY = point?.y ?? 0;
   const havePoint = !!point;
+  const totalSeconds = Math.ceil((totalPoints * (SETTLE_MS + SAMPLE_MS)) / 1000);
 
-  // Settle phase → sampling phase. Only re-runs when `i` changes.
+  // After user starts, kick off the settle→sample cycle for each dot.
+  // The dependency is `i` plus a flag for "are we past the intro?" — once
+  // we're past the intro the effect will retrigger on each dot index change.
+  const started = phase !== 'intro';
   useEffect(() => {
-    if (!havePoint) return;
+    if (!started || !havePoint) return;
     setPhase('settle');
     const settleTimer = setTimeout(() => setPhase('sampling'), SETTLE_MS);
     return () => clearTimeout(settleTimer);
-  }, [i, havePoint]);
+    // Intentionally omit `phase` from deps — we set it here.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [i, havePoint, started]);
 
   // Sampling phase: collect features for SAMPLE_MS, then advance or finish.
   useEffect(() => {
@@ -68,6 +76,36 @@ export function Calibration() {
       clearTimeout(advance);
     };
   }, [i, phase, nav, havePoint, pointX, pointY, totalPoints]);
+
+  if (phase === 'intro') {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-neutral-950 p-8">
+        <div className="max-w-md text-center">
+          <h1 className="text-3xl">Gaze calibration</h1>
+          <p className="mt-4 text-neutral-300">
+            We'll show you {totalPoints} dots, one at a time, in different spots around the screen.
+            Look directly at each dot while it pulses green — about a second each.
+            Try to hold your head still; only move your eyes.
+          </p>
+          <p className="mt-3 text-sm text-neutral-500">
+            Takes about {totalSeconds} seconds.
+          </p>
+          <button
+            onClick={() => setPhase('settle')}
+            className="mt-8 rounded-full bg-blue-500 px-6 py-3 text-lg shadow-xl hover:bg-blue-400"
+          >
+            Start calibration
+          </button>
+          <button
+            onClick={() => nav('/')}
+            className="mt-3 block w-full text-sm text-neutral-400 hover:text-neutral-200"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (!point) return null;
 
