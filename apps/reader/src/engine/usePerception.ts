@@ -1,7 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import { GazeAdapter, HandAdapter, VoiceAdapter } from '@input/core';
+import { FaceGazeAdapter, HandAdapter, VoiceAdapter } from '@input/core';
 import { useEngine } from './useEngine.js';
 import { useSettings } from '../store/settings.js';
+
+// Module-level singletons so non-Perception components (e.g. Calibration)
+// can reach the gaze adapter for setCalibration().
+export const sharedGaze = new FaceGazeAdapter();
+const sharedHand = new HandAdapter();
+const sharedVoice = new VoiceAdapter();
 
 export interface PerceptionHandle {
   start(): Promise<void>;
@@ -10,13 +16,14 @@ export interface PerceptionHandle {
   lastTranscript: string | null;
   micRms: number;
   micThreshold: number;
+  gaze: FaceGazeAdapter;
 }
 
 export function usePerception(): PerceptionHandle & { ready: boolean } {
   const { engine } = useEngine();
-  const gaze = useRef(new GazeAdapter());
-  const hand = useRef(new HandAdapter());
-  const voice = useRef(new VoiceAdapter());
+  const gaze = useRef(sharedGaze);
+  const hand = useRef(sharedHand);
+  const voice = useRef(sharedVoice);
   const [ready, setReady] = useState(false);
   const gestureRef = useRef('none');
   const transcriptRef = useRef<string | null>(null);
@@ -42,6 +49,7 @@ export function usePerception(): PerceptionHandle & { ready: boolean } {
     get lastTranscript() { return transcriptRef.current; },
     get micRms() { return voice.current.vad.lastRms; },
     get micThreshold() { return 0.01; },
+    get gaze() { return gaze.current; },
     async start() {
       const s = useSettings.getState();
       const stream = await navigator.mediaDevices.getUserMedia({
