@@ -67,7 +67,9 @@ const DEFAULTS: Required<FaceGazeAdapterOptions> = {
   // Heavier smoothing than before. minCutoff=0.3 = ~3s smoothing window
   // when stationary; beta=0.15 lets quick saccades through.
   oneEuro: { minCutoff: 0.3, beta: 0.15, dCutoff: 1 },
-  fixation: { radiusPx: 60, dwellMs: 100 },
+  // dwellMs raised from 100 → 200 to suppress micro-jitter false-positives
+  // on HOVERED transitions; 100ms was firing on natural saccadic noise.
+  fixation: { radiusPx: 60, dwellMs: 200 },
 };
 
 const STORAGE_KEY = 'face-gaze-calibration-v2';
