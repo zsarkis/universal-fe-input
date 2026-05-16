@@ -6,6 +6,7 @@ import { VoiceIndicator } from './components/VoiceIndicator.js';
 import { GestureReadout } from './components/GestureReadout.js';
 import { MicMeter } from './components/MicMeter.js';
 import { HelpOverlay } from './components/HelpOverlay.js';
+import { Toast } from './components/Toast.js';
 import { Library } from './routes/Library.js';
 import { Reader } from './routes/Reader.js';
 import { Calibration } from './routes/Calibration.js';
@@ -61,6 +62,7 @@ export function App() {
       <GazeCursor />
       <VoiceIndicator />
       <HelpHost />
+      <Toast />
     </EngineProvider>
   );
 }

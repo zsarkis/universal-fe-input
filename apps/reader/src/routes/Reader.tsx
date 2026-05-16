@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { findArticle } from '../articles/index.js';
 import { useAutoScroll } from '../engine/useAutoScroll.js';
@@ -8,6 +9,16 @@ export function Reader() {
   const { id = '' } = useParams();
   const article = findArticle(id);
   const nav = useNavigate();
+
+  useEffect(() => {
+    if (!article) return;
+    const saved = localStorage.getItem(`bookmark:${article.id}`);
+    const y = saved ? Number(saved) : NaN;
+    if (Number.isFinite(y) && y > 0) {
+      requestAnimationFrame(() => window.scrollTo({ top: y, behavior: 'auto' }));
+    }
+  }, [article]);
+
   if (!article) {
     return (
       <div className="p-8">
