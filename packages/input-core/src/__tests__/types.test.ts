@@ -27,10 +27,12 @@ describe('types', () => {
     expectTypeOf<Gesture>().toEqualTypeOf<'pinch' | 'open_palm' | 'none'>();
   });
 
-  it('IntentName covers the 15 documented intents', () => {
+  it('IntentName covers the documented intents', () => {
     type Expected =
       | 'open' | 'select' | 'close' | 'back'
-      | 'scroll_down' | 'scroll_up' | 'top' | 'bottom' | 'next' | 'previous'
+      | 'scroll_down' | 'scroll_up' | 'top' | 'bottom'
+      | 'next' | 'previous' | 'next_paragraph' | 'previous_paragraph'
+      | 'bookmark'
       | 'summarize' | 'read_aloud' | 'stop_reading'
       | 'calibrate' | 'cancel' | 'help';
     expectTypeOf<IntentName>().toEqualTypeOf<Expected>();

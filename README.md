@@ -2,7 +2,9 @@
 
 A multimodal input system that fuses webcam-based **gaze tracking**, **hand-gesture recognition**, and **voice intent** into a single intent stream that drives a hands-free article reader.
 
-> Look at a card. Pinch to open. Look at the bottom of the page to scroll. Say "summarize" to get an LLM summary.
+The design idea: **gaze provides the region, voice provides the intent.** Webcam gaze on commodity hardware is roughly accurate enough to pick a big card or page region; voice is precise enough to say what to do with it. The fusion state machine combines those signals into committed intents.
+
+> Look at a card. Pinch (or say "open"). Look at the bottom of the page to scroll. Say "summarize," "next paragraph," "bookmark," "back."
 
 ## Demo
 
@@ -14,7 +16,7 @@ A multimodal input system that fuses webcam-based **gaze tracking**, **hand-gest
 - **`apps/reader`** — the showcase: a hands-free article reader built on the engine via a small set of React hooks (`useEngine`, `useGazeTarget`, `useAutoScroll`, `useIntentRouter`, `usePerception`).
 - **`workers/summarize`** — a Cloudflare Worker proxy that calls Claude Haiku 4.5 for live summarization. Rate-limited per IP, hard daily spend cap, supports bring-your-own-key.
 
-The interesting story is the fusion layer. Each modality on its own is noisy: gaze drifts, voice mis-recognizes, gestures fire accidentally. The fusion state machine combines signals so an action only commits when two signals agree (or when one signal is unambiguous on its own — like a deliberately held pinch).
+The interesting story is the fusion layer. Each modality on its own is noisy: gaze drifts (~50–150px on commodity webcams), voice mis-recognizes, gestures fire accidentally. The fusion state machine combines signals so an action only commits when two signals agree (or when one signal is unambiguous on its own — like a deliberately held pinch). The reader UX is intentionally built around big targets and region-level gaze cues so the engine's strengths show; precise link targeting is out of scope (see issue #2).
 
 ## Architecture
 
